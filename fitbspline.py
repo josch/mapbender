@@ -152,18 +152,28 @@ def main():
     qy.append(out[1][-1]+dy/dl)
     quads = []
     patches = []
-    #for (p0x,p0y,p1x,p1y),(p3x,p3y,p2x,p2y) in pairwise(zip(px,py,qx,qy)):
-    for (p3x,p3y,p2x,p2y),(p0x,p0y,p1x,p1y) in pairwise(zip(px,py,qx,qy)):
-        quads.append(((p0x,p0y),(p1x,p1y),(p2x,p2y),(p3x,p3y)))
-        polygon = Polygon(((p0x,p0y),(p1x,p1y),(p2x,p2y),(p3x,p3y)), True)
-        patches.append(polygon)
+    # a unified quad p0,p2,p5,p3 does not work because then after perspective
+    # projection, the line p1,p4 is not in the center anymore
+    #
+    # p0----p1---p2
+    #  |    |    |
+    # p3----p4---p5
+    #
+    for (p3x,p3y,p4x,p4y,p5x,p5y),(p0x,p0y,p1x,p1y,p2x,p2y) in pairwise(zip(px,py,out[0],out[1],qx,qy)):
+        q1 = ((p0x,p0y),(p1x,p1y),(p4x,p4y),(p3x,p3y))
+        q2 = ((p1x,p1y),(p2x,p2y),(p5x,p5y),(p4x,p4y))
+        quads.append((q1,q2))
+        patches.append(Polygon(q1, True))
+        patches.append(Polygon(q2, True))
     containingquad = []
     for pt in zip(x,y):
         # for each point, find the quadrilateral that contains it
         found = []
-        for i,(p0,p1,p2,p3) in enumerate(quads):
-            if ptInQuadrilateral(pt,p0,p1,p2,p3):
-                found.append(i)
+        for i,(q1,q2) in enumerate(quads):
+            if ptInQuadrilateral(pt,*q1):
+                found.append((i,0))
+            if ptInQuadrilateral(pt,*q2):
+                found.append((i,1))
         if found:
             if len(found) > 2:
                 print found
@@ -175,11 +185,15 @@ def main():
     print containingquad
     trans = []
     print width, height
-    for off,h,srcquad in zip(offs,heights,quads):
+    for off,h,(q1,q2) in zip(offs,heights,quads):
         #targetquad = ((0,height-off),(width,height-off),(width,height-off-h),(0,height-off-h))
-        targetquad = ((0,off+h),(width,off+h),(width,off),(0,off))
-        trans.append(find_coeffs(srcquad,targetquad))
-        patches.append(Polygon(targetquad,True))
+        t1 = ((0,off+h),(halfwidth,off+h),(halfwidth,off),(0,off))
+        t2 = ((halfwidth,off+h),(width,off+h),(width,off),(halfwidth,off))
+        c1 = find_coeffs(q1,t1)
+        c2 = find_coeffs(q2,t2)
+        trans.append((c1,c2))
+        patches.append(Polygon(t1,True))
+        patches.append(Polygon(t2,True))
     tx = []
     ty = []
     #targetquad = (0,height),(width,height),(width,0),(0,0)
@@ -196,8 +210,8 @@ def main():
     for (rx,ry),l in zip(zip(x,y),containingquad):
         if not l:
             continue
-        for i in l[:1]:
-            a,b,c,d,e,f,g,h = trans[i]
+        for i,j in l[:1]:
+            a,b,c,d,e,f,g,h = trans[i][j]
             #den = -a*e+a*h*ry+b*d-b*g*ry-d*h*rx+e*g*rx
             #tx.append((-b*f+b*ry+c*e-c*h*ry-e*rx+f*h*rx)/den)
             #ty.append((a*f-a*ry-c*d+c*g*ry+d*rx-f*g*rx)/den)
@@ -205,17 +219,17 @@ def main():
             v = (d*rx + e*ry + f)/(g*rx + h*ry + 1)
             tx.append(u)
             ty.append(v)
-    sx = []
-    sy = []
-    for (((ax,ay),(bx,by)),(a,b,c,d,e,f,g,h)) in zip(pairwise(zip(*out)),trans):
-        u = (a*ax + b*ay + c)/(g*ax + h*ay + 1)
-        v = (d*ax + e*ay + f)/(g*ax + h*ay + 1)
-        sx.append(u)
-        sy.append(v)
-        u = (a*bx + b*by + c)/(g*bx + h*by + 1)
-        v = (d*bx + e*by + f)/(g*bx + h*by + 1)
-        sx.append(u)
-        sy.append(v)
+    #sx = []
+    #sy = []
+    #for (((ax,ay),(bx,by)),(a,b,c,d,e,f,g,h)) in zip(pairwise(zip(*out)),trans):
+    #    u = (a*ax + b*ay + c)/(g*ax + h*ay + 1)
+    #    v = (d*ax + e*ay + f)/(g*ax + h*ay + 1)
+    #    sx.append(u)
+    #    sy.append(v)
+    #    u = (a*bx + b*by + c)/(g*bx + h*by + 1)
+    #    v = (d*bx + e*by + f)/(g*bx + h*by + 1)
+    #    sx.append(u)
+    #    sy.append(v)
     colors = 100*np.random.rand(len(patches)/2)+100*np.random.rand(len(patches)/2)
     p = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.4)
     p.set_array(np.array(colors))
@@ -225,7 +239,7 @@ def main():
     fig, ax = plt.subplots()
     ax.add_collection(p)
     ax.set_aspect('equal')
-    plt.plot(x,y,out[0],out[1],px,py,qx,qy,tx,ty,sx,sy)
+    plt.plot(x,y,out[0],out[1],px,py,qx,qy,tx,ty)
     #plt.plot(tx,ty)
     plt.show()
 
