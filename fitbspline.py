@@ -67,6 +67,56 @@ def ptInQuadrilateral(p, p0, p1, p2, p3):
     #    return ptInTriangle(p, p0, p1, p2) or ptInTriangle(p, p2, p3, p0)
     return ptInTriangle(p, p0, p1, p2) or ptInTriangle(p, p2, p3, p0)
 
+def get_st(Ax,Ay,Bx,By,Cx,Cy,Dx,Dy,Xx,Xy):
+    d = Bx-Ax-Cx+Dx
+    e = By-Ay-Cy+Dy
+    l = Dx-Ax
+    g = Dy-Ay
+    h = Cx-Dx
+    m = Cy-Dy
+    i = Xx-Dx
+    j = Xy-Dy
+    n = g*h-m*l
+    # calculation for s
+    a1 = m*d-h*e
+    b1 = n-j*d+i*e
+    c1 = l*j-g*i
+    # calculation for t
+    a2 = g*d-l*e
+    b2 = n+j*d-i*e
+    c2 = h*j-m*i
+    s = []
+    if a1 == 0:
+        s.append(-c1/b1)
+    else:
+        r1 = b1*b1-4*a1*c1
+        if r1 >= 0:
+            r11 = (-b1+sqrt(r1))/(2*a1)
+            if -0.0000000001 <= r11 <= 1.0000000001:
+                s.append(r11)
+            r12 = (-b1-sqrt(r1))/(2*a1)
+            if -0.0000000001 <= r12 <= 1.0000000001:
+                s.append(r12)
+    t = []
+    if a2 == 0:
+        t.append(-c2/b2)
+    else:
+        r2 = b2*b2-4*a2*c2
+        if r2 >= 0:
+            r21 = (-b2+sqrt(r2))/(2*a2)
+            if -0.0000000001 <= r21 <= 1.0000000001:
+                t.append(r21)
+            r22 = (-b2-sqrt(r2))/(2*a2)
+            if -0.0000000001 <= r22 <= 1.0000000001:
+                t.append(r22)
+    if not s or not t:
+        return None
+    if len(s) == 1 and len(t) == 2:
+        s = [s[0],s[0]]
+    if len(s) == 2 and len(t) == 1:
+        t = [t[0],t[0]]
+    return s, t
+
 def find_coeffs(pa, pb):
     matrix = []
     for p1, p2 in zip(pa, pb):
@@ -152,28 +202,18 @@ def main():
     qy.append(out[1][-1]+dy/dl)
     quads = []
     patches = []
-    # a unified quad p0,p2,p5,p3 does not work because then after perspective
-    # projection, the line p1,p4 is not in the center anymore
-    #
-    # p0----p1---p2
-    #  |    |    |
-    # p3----p4---p5
-    #
-    for (p3x,p3y,p4x,p4y,p5x,p5y),(p0x,p0y,p1x,p1y,p2x,p2y) in pairwise(zip(px,py,out[0],out[1],qx,qy)):
-        q1 = ((p0x,p0y),(p1x,p1y),(p4x,p4y),(p3x,p3y))
-        q2 = ((p1x,p1y),(p2x,p2y),(p5x,p5y),(p4x,p4y))
-        quads.append((q1,q2))
-        patches.append(Polygon(q1, True))
-        patches.append(Polygon(q2, True))
+    #for (p0x,p0y,p1x,p1y),(p3x,p3y,p2x,p2y) in pairwise(zip(px,py,qx,qy)):
+    for (p3x,p3y,p2x,p2y),(p0x,p0y,p1x,p1y) in pairwise(zip(px,py,qx,qy)):
+        quads.append(((p0x,p0y),(p1x,p1y),(p2x,p2y),(p3x,p3y)))
+        polygon = Polygon(((p0x,p0y),(p1x,p1y),(p2x,p2y),(p3x,p3y)), True)
+        patches.append(polygon)
     containingquad = []
     for pt in zip(x,y):
         # for each point, find the quadrilateral that contains it
         found = []
-        for i,(q1,q2) in enumerate(quads):
-            if ptInQuadrilateral(pt,*q1):
-                found.append((i,0))
-            if ptInQuadrilateral(pt,*q2):
-                found.append((i,1))
+        for i,(p0,p1,p2,p3) in enumerate(quads):
+            if ptInQuadrilateral(pt,p0,p1,p2,p3):
+                found.append(i)
         if found:
             if len(found) > 2:
                 print found
@@ -185,15 +225,12 @@ def main():
     print containingquad
     trans = []
     print width, height
-    for off,h,(q1,q2) in zip(offs,heights,quads):
+    srcquads = []
+    for off,h,srcquad in zip(offs,heights,quads):
         #targetquad = ((0,height-off),(width,height-off),(width,height-off-h),(0,height-off-h))
-        t1 = ((0,off+h),(halfwidth,off+h),(halfwidth,off),(0,off))
-        t2 = ((halfwidth,off+h),(width,off+h),(width,off),(halfwidth,off))
-        c1 = find_coeffs(q1,t1)
-        c2 = find_coeffs(q2,t2)
-        trans.append((c1,c2))
-        patches.append(Polygon(t1,True))
-        patches.append(Polygon(t2,True))
+        targetquad = ((0,off+h),(width,off+h),(width,off),(0,off))
+        trans.append(find_coeffs(srcquad,targetquad))
+        patches.append(Polygon(targetquad,True))
     tx = []
     ty = []
     #targetquad = (0,height),(width,height),(width,0),(0,0)
@@ -210,26 +247,45 @@ def main():
     for (rx,ry),l in zip(zip(x,y),containingquad):
         if not l:
             continue
-        for i,j in l[:1]:
-            a,b,c,d,e,f,g,h = trans[i][j]
-            #den = -a*e+a*h*ry+b*d-b*g*ry-d*h*rx+e*g*rx
-            #tx.append((-b*f+b*ry+c*e-c*h*ry-e*rx+f*h*rx)/den)
-            #ty.append((a*f-a*ry-c*d+c*g*ry+d*rx-f*g*rx)/den)
-            u = (a*rx + b*ry + c)/(g*rx + h*ry + 1)
-            v = (d*rx + e*ry + f)/(g*rx + h*ry + 1)
+        for i in l[:1]:
+            (ax,ay),(bx,by),(cx,cy),(dx,dy) = quads[i]
+            s,t = get_st(ax,ay,bx,by,cx,cy,dx,dy,rx,ry)
+            if len(s) != 1 or len(t) != 1:
+                print "fail"
+                exit(1)
+            #a,b,c,d,e,f,g,h = trans[i]
+            ##den = -a*e+a*h*ry+b*d-b*g*ry-d*h*rx+e*g*rx
+            ##tx.append((-b*f+b*ry+c*e-c*h*ry-e*rx+f*h*rx)/den)
+            ##ty.append((a*f-a*ry-c*d+c*g*ry+d*rx-f*g*rx)/den)
+            #u = (a*rx + b*ry + c)/(g*rx + h*ry + 1)
+            #v = (d*rx + e*ry + f)/(g*rx + h*ry + 1)
+            u = s[0]*width
+            v = offs[i]+t[0]*heights[i]
             tx.append(u)
             ty.append(v)
-    #sx = []
-    #sy = []
-    #for (((ax,ay),(bx,by)),(a,b,c,d,e,f,g,h)) in zip(pairwise(zip(*out)),trans):
-    #    u = (a*ax + b*ay + c)/(g*ax + h*ay + 1)
-    #    v = (d*ax + e*ay + f)/(g*ax + h*ay + 1)
-    #    sx.append(u)
-    #    sy.append(v)
-    #    u = (a*bx + b*by + c)/(g*bx + h*by + 1)
-    #    v = (d*bx + e*by + f)/(g*bx + h*by + 1)
-    #    sx.append(u)
-    #    sy.append(v)
+    sx = []
+    sy = []
+    for ((x1,y1),(x2,y2)),((ax,ay),(bx,by),(cx,cy),(dx,dy)),off,h in zip(pairwise(zip(*out)),quads,offs,heights):
+        s,t = get_st(ax,ay,bx,by,cx,cy,dx,dy,x1,y1)
+        if len(s) != 1 or len(t) != 1:
+            print "fail"
+            exit(1)
+        #u = (a*ax + b*ay + c)/(g*ax + h*ay + 1)
+        #v = (d*ax + e*ay + f)/(g*ax + h*ay + 1)
+        u = s[0]*width
+        v = off+t[0]*h
+        sx.append(u)
+        sy.append(v)
+        #u = (a*bx + b*by + c)/(g*bx + h*by + 1)
+        #v = (d*bx + e*by + f)/(g*bx + h*by + 1)
+        s,t = get_st(ax,ay,bx,by,cx,cy,dx,dy,x2,y2)
+        if len(s) != 1 or len(t) != 1:
+            print "fail"
+            exit(1)
+        u = s[0]*width
+        v = off+t[0]*h
+        sx.append(u)
+        sy.append(v)
     colors = 100*np.random.rand(len(patches)/2)+100*np.random.rand(len(patches)/2)
     p = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.4)
     p.set_array(np.array(colors))
@@ -239,7 +295,7 @@ def main():
     fig, ax = plt.subplots()
     ax.add_collection(p)
     ax.set_aspect('equal')
-    plt.plot(x,y,out[0],out[1],px,py,qx,qy,tx,ty)
+    plt.plot(x,y,out[0],out[1],px,py,qx,qy,sx,sy,tx,ty)
     #plt.plot(tx,ty)
     plt.show()
 
