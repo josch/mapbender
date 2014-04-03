@@ -1,4 +1,19 @@
 #!/usr/bin/env python
+#
+# Copyright (C) 2014  Johannes Schauer <j.schauer@email.de>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import math
 from math import sqrt
@@ -307,8 +322,9 @@ def main(x,y,width,smoothing,subdiv):
     plt.axes().set_aspect('equal')
     #plt.axhspan(0, height, xmin=0, xmax=width)
     fig, ax = plt.subplots()
-    ax.add_collection(p)
+    #ax.add_collection(p)
     ax.set_aspect('equal')
+    plt.axis((0,width,0,height))
     plt.imshow(np.asarray(im_out),extent=[0,width,0,height])
     plt.imshow(np.asarray(im),extent=[bbox[0],bbox[2],bbox[1],bbox[3]])
     plt.plot(x,y,out[0],out[1],px,py,qx,qy,tx,ty)
