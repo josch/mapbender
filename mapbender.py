@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 import math
 from math import sqrt
 import numpy as np
@@ -319,6 +318,18 @@ def main(x,y,width,smoothing,subdiv):
 if __name__ == '__main__':
     x = []
     y = []
+    import sys
+    if len(sys.argv) != 5:
+        print "usage: %s data.csv width smoothing N"%sys.argv[0]
+        print ""
+        print " data.csv     whitespace delimited lon/lat pairs of points along the path"
+        print " width        width of the resulting map in degrees"
+        print " smoothing    curve smoothing from 0 (exact fit) to higher values (looser fit)"
+        print " N            amount of quads to split the path into"
+        print ""
+        print " example usage:"
+        print "              %s Weser-Radweg-Hauptroute.csv 0.286 6 20"%sys.argv[0]
+        exit(1)
     with open(sys.argv[1]) as f:
         for l in f:
             a,b = l.split()
@@ -326,8 +337,10 @@ if __name__ == '__main__':
             b = lat2y(float(b))
             x.append(float(a))
             y.append(b)
-    width = 2.0/7.0
-    main(x,y,width,6,20)
+    width = float(sys.argv[2])
+    smoothing = float(sys.argv[3])
+    N = int(sys.argv[4])
+    main(x,y,width,smoothing,N)
     #for smoothing in [1,2,4,8,12]:
     #    for subdiv in range(10,30):
     #        if main(x,y,width,smoothing,subdiv):
