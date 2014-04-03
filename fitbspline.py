@@ -266,25 +266,12 @@ def main(x,y,width,smoothing,subdiv):
     #    v = off+t[0]*h
     #    sx.append(u)
     #    sy.append(v)
-    im1 = Image.open("out.png")
-    im2 = Image.open("map.png")
-    bbox = [8.4320068359375,51.34090729023285,9.7119140625,53.556626004824615]
+    im = Image.open("map.png")
+    bbox = [8.0419921875,51.25160146817652,10.074462890625,54.03681240523652]
+    # apply mercator projection
     bbox[1] = lat2y(bbox[1])
     bbox[3] = lat2y(bbox[3])
-    colors = 100*np.random.rand(len(patches)/2)+100*np.random.rand(len(patches)/2)
-    p = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.4)
-    p.set_array(np.array(colors))
-    plt.figure()
-    plt.axes().set_aspect('equal')
-    #plt.axhspan(0, height, xmin=0, xmax=width)
-    fig, ax = plt.subplots()
-    ax.add_collection(p)
-    ax.set_aspect('equal')
-    plt.imshow(np.asarray(im1),extent=[0,width,0,height])
-    plt.imshow(np.asarray(im2),extent=[bbox[0],bbox[2],bbox[1],bbox[3]])
-    plt.plot(x,y,out[0],out[1],px,py,qx,qy,tx,ty)
-    plt.show()
-    iw,ih = im2.size
+    iw,ih = im.size
     data = []
     for i,(off,h,(p0,p1,p2,p3)) in enumerate(zip(offs,heights,quads)):
         # first, account for the offset of the input image
@@ -311,8 +298,22 @@ def main(x,y,width,smoothing,subdiv):
                 int(iw*width/(bbox[2]-bbox[0])),int(ih*(height-off)/(bbox[3]-bbox[1])))
         quad=(p0[0],p0[1],p1[0],p1[1],p2[0],p2[1],p3[0],p3[1])
         data.append((box,quad))
-    im_out = im2.transform((int(iw*width/(bbox[2]-bbox[0])),int(ih*height/(bbox[3]-bbox[1]))),Image.MESH,data,Image.BICUBIC)
+    im_out = im.transform((int(iw*width/(bbox[2]-bbox[0])),int(ih*height/(bbox[3]-bbox[1]))),Image.MESH,data,Image.BICUBIC)
     im_out.save("out.png")
+    np.random.seed(seed=0)
+    colors = 100*np.random.rand(len(patches)/2)+100*np.random.rand(len(patches)/2)
+    p = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.4)
+    p.set_array(np.array(colors))
+    plt.figure()
+    plt.axes().set_aspect('equal')
+    #plt.axhspan(0, height, xmin=0, xmax=width)
+    fig, ax = plt.subplots()
+    ax.add_collection(p)
+    ax.set_aspect('equal')
+    plt.imshow(np.asarray(im_out),extent=[0,width,0,height])
+    plt.imshow(np.asarray(im),extent=[bbox[0],bbox[2],bbox[1],bbox[3]])
+    plt.plot(x,y,out[0],out[1],px,py,qx,qy,tx,ty)
+    plt.show()
     return True
 
 if __name__ == '__main__':
