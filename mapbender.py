@@ -280,6 +280,8 @@ def main(x,y,width,smoothing,subdiv):
     #    v = off+t[0]*h
     #    sx.append(u)
     #    sy.append(v)
+    # create map with
+    # python -c 'import logging; logging.basicConfig(level=logging.DEBUG); from landez import ImageExporter; ie = ImageExporter(tiles_url="http://{s}.tile.opencyclemap.org/cycle/{z}/{x}/{y}.png"); ie.export_image(bbox=(8.0419921875,51.25160146817652,10.074462890625,54.03681240523652), zoomlevel=14, imagepath="image.png")'
     im = Image.open("map.png")
     bbox = [8.0419921875,51.25160146817652,10.074462890625,54.03681240523652]
     # apply mercator projection
@@ -314,21 +316,21 @@ def main(x,y,width,smoothing,subdiv):
         data.append((box,quad))
     im_out = im.transform((int(iw*width/(bbox[2]-bbox[0])),int(ih*height/(bbox[3]-bbox[1]))),Image.MESH,data,Image.BICUBIC)
     im_out.save("out.png")
-    np.random.seed(seed=0)
-    colors = 100*np.random.rand(len(patches)/2)+100*np.random.rand(len(patches)/2)
-    p = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.4)
-    p.set_array(np.array(colors))
-    plt.figure()
-    plt.axes().set_aspect('equal')
-    #plt.axhspan(0, height, xmin=0, xmax=width)
-    fig, ax = plt.subplots()
-    #ax.add_collection(p)
-    ax.set_aspect('equal')
-    plt.axis((0,width,0,height))
-    plt.imshow(np.asarray(im_out),extent=[0,width,0,height])
-    plt.imshow(np.asarray(im),extent=[bbox[0],bbox[2],bbox[1],bbox[3]])
-    plt.plot(x,y,out[0],out[1],px,py,qx,qy,tx,ty)
-    plt.show()
+    #np.random.seed(seed=0)
+    #colors = 100*np.random.rand(len(patches)/2)+100*np.random.rand(len(patches)/2)
+    #p = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.4)
+    #p.set_array(np.array(colors))
+    #plt.figure()
+    #plt.axes().set_aspect('equal')
+    ##plt.axhspan(0, height, xmin=0, xmax=width)
+    #fig, ax = plt.subplots()
+    ##ax.add_collection(p)
+    #ax.set_aspect('equal')
+    #plt.axis((0,width,0,height))
+    #plt.imshow(np.asarray(im_out),extent=[0,width,0,height])
+    #plt.imshow(np.asarray(im),extent=[bbox[0],bbox[2],bbox[1],bbox[3]])
+    #plt.plot(x,y,out[0],out[1],px,py,qx,qy,tx,ty)
+    #plt.show()
     return True
 
 if __name__ == '__main__':
